@@ -1,0 +1,211 @@
+﻿@page "/doctors"
+@rendermode InteractiveServer
+@using UFAR.Classwork.Data.Entities
+@using UFAR.Classwork.Data.DAO
+@using UFAR.Classwork.UI.Helpers
+@inject NavigationManager NavManager
+@inject IJSRuntime JsRuntime
+
+<h1>Patient List</h1>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Surname</th>
+            <th>DOB</th>
+            <th>Position</th>
+            <th>Department</th>
+            <th>Illness</th>
+            <th>Illness Description</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var patient in AllPatients)
+
+        {
+            <tr>
+                <td>@patient.ID</td>
+                <td>@patient.Name</td>
+                <td>@patient.Surname</td>
+                <td>@patient.DOB.ToShortDateString()</td>
+                <td>@patient.Position</td>
+                <td>@patient.Departement</td>
+                <td>@patient.Illness</td>
+                <td>@patient.IllnessDescription</td>
+                <td>@patient.Status</td>
+                <td>
+                    @if (patient.Status == "Rejected")
+                    {
+                        <span style="color: red; font-weight: bold;">Rejected</span>
+                    }
+                    else if (pdfGeneratedStatus.TryGetValue(patient.ID, out bool isGenerated) && isGenerated)
+                    {
+                        <span style="color: green; font-weight: bold;">Paper is generated</span>
+                    }
+                    else
+                    {
+                        <button class="btn btn-success" @onclick="() => ApprovePatient(patient)">Approve</button>
+                        <button class="btn btn-danger" @onclick="() => RejectPatient(patient)">Reject</button>
+                        <button class="btn btn-info" @onclick="() => GeneratePdf(patient)">Generate PDF</button>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+
+</table>
+
+@if (selectedPatient != null)
+
+{
+    <div>
+        <h3>Approval Details for @selectedPatient.Name</h3>
+        <div>
+            <label for="illnessDescription">Illness Description</label>
+            <input type="text" id="illnessDescription" @bind="illnessDescription" />
+
+            <label for="daysToStay">Days to Stay at Home</label>
+            <input type="number" id="daysToStay" @bind="daysToStay" />
+
+            <button class="btn btn-primary" @onclick="SubmitApproval">Submit Approval</button>
+            <button class="btn btn-secondary" @onclick="CancelApproval">Cancel</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Inject]
+
+    public ApplicationDBContext context { get; set; }
+
+
+
+    List<PatientAccount> AllPatients { get; set; } = new List<PatientAccount>();
+
+    PatientAccount selectedPatient { get; set; }
+
+    string illnessDescription { get; set; }
+
+    int daysToStay { get; set; }
+
+    private Dictionary<int, bool> pdfGeneratedStatus = new();
+
+
+
+
+
+    protected override void OnInitialized()
+
+    {
+
+        LoadPatientList();
+
+    }
+
+
+
+    private void LoadPatientList()
+
+    {
+
+        AllPatients = context.PatientAccounts.ToList();
+
+    }
+
+
+
+    private void ApprovePatient(PatientAccount patient)
+
+    {
+
+        selectedPatient = patient;
+
+        illnessDescription = "";
+
+        daysToStay = 0;
+
+        selectedPatient.Status = "Active";
+
+
+
+    }
+
+
+
+    private void RejectPatient(PatientAccount patient)
+
+    {
+
+
+
+        patient.Status = "Rejected";
+
+        context.SaveChanges();
+
+        LoadPatientList();
+
+    }
+
+
+
+    private void SubmitApproval()
+
+    {
+
+        selectedPatient.IllnessDescription = illnessDescription;
+
+        selectedPatient.DaysTime = daysToStay;
+
+        context.SaveChanges();
+
+        JsRuntime.InvokeVoidAsync("alert", "Patient approved successfully!");
+
+        selectedPatient = null;
+
+    }
+
+
+
+    private void CancelApproval()
+
+    {
+
+        selectedPatient = null;
+
+        illnessDescription = string.Empty;
+
+        daysToStay = 0;
+
+    }
+
+
+
+    private void GeneratePdf(PatientAccount patient)
+
+    {
+
+        // Generate PDF with patient details
+
+
+
+        SickLeaveFormGenerator generator = new SickLeaveFormGenerator();
+
+        generator.GenerateSickLeavePdf(patient);
+
+        JsRuntime.InvokeVoidAsync("alert", "Sick Leave paper is generated successfully!");
+
+        pdfGeneratedStatus[patient.ID] = true;
+
+
+
+
+
+
+
+
+
+    }
+}

@@ -1,0 +1,125 @@
+﻿@page "/signup"
+
+@using UFAR.Classwork.Data.Entities
+@using UFAR.Classwork.UI.Services
+@using UFAR.Classwork.UI.Helpers
+@inject AuthenticationService AuthService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
+
+@rendermode InteractiveServer
+
+<style>
+    .signup-container {
+        max-width: 400px;
+        margin: 0 auto;
+        padding: 20px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        background-color: #f9f9f9;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h3 {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+
+    .btn-primary {
+        width: 100%;
+        padding: 10px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+    .login-link {
+        text-align: center;
+        margin-top: 15px;
+    }
+</style>
+
+<h3>Sign Up</h3>
+
+<div class="signup-container">
+    <EditForm Model="@newPatientAccount" OnValidSubmit="@HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="form-group">
+            <label>Name:</label>
+            <InputText class="form-control" @bind-Value="@newPatientAccount.Name" />
+            <ValidationMessage For="@(() => newPatientAccount.Name)" />
+        </div>
+        <div class="form-group">
+            <label>Surname:</label>
+            <InputText class="form-control" @bind-Value="@newPatientAccount.Surname" />
+            <ValidationMessage For="@(() => newPatientAccount.Surname)" />
+        </div>
+        <div class="form-group">
+            <label>ID Number:</label>
+            <InputText class="form-control" @bind-Value="@newPatientAccount.IdNumber" />
+            <ValidationMessage For="@(() => newPatientAccount.IdNumber)" />
+        </div>
+        <div class="form-group">
+            <label>Date of Birth:</label>
+            <InputDate class="form-control" @bind-Value="@newPatientAccount.DOB" />
+            <ValidationMessage For="@(() => newPatientAccount.DOB)" />
+        </div>
+        <div class="form-group">
+            <label>Email:</label>
+            <InputText type="email" class="form-control" @bind-Value="@newPatientAccount.Email" />
+            <ValidationMessage For="@(() => newPatientAccount.Email)" />
+        </div>
+        <div class="form-group">
+            <label>Password:</label>
+            <InputText type="password" class="form-control" @bind-Value="@newPatientAccount.PasswordHash" />
+            <ValidationMessage For="@(() => newPatientAccount.PasswordHash)" />
+        </div>
+        <div class="form-group">
+            <button type="submit" class="btn btn-primary">Sign Up</button>
+        </div>
+
+        <div class="login-link">
+            <p>Already have an account? <a href="/">Login here</a></p>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    private PatientAccount newPatientAccount { get; set; } = new();
+
+    private async Task HandleValidSubmit()
+    {
+        var success = await AuthService.RegisterUserAsync(newPatientAccount);
+
+        if (success)
+        {
+            await JsRuntime.InvokeVoidAsync("localStorage.setItem", "authenticatedUser",
+                System.Text.Json.JsonSerializer.Serialize(newPatientAccount));
+
+            NavigationManager.NavigateTo("/profile");
+        }
+        else
+        {
+            Console.WriteLine("Error: Unable to register the user. Email may already exist.");
+        }
+    }
+}

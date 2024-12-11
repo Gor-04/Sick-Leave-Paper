@@ -1,0 +1,208 @@
+﻿@page "/patients"
+@rendermode InteractiveServer
+@inject NavigationManager NavManager
+@using UFAR.Classwork.Data.DAO
+@using UFAR.Classwork.Data.Entities
+@using UFAR.Classwork.UI.Services
+
+@inject IJSRuntime JsRuntime
+
+@inject AuthenticationService AuthService
+
+<style>
+    .page-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .title {
+        text-align: center;
+        font-family: Arial, sans-serif;
+        font-size: 32px;
+        color: #333;
+    }
+
+    .apply-button {
+        display: block;
+        margin: 20px auto;
+    }
+
+    .patient-form {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+        .form-group label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+    .form-control {
+        padding: 10px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+        font-size: 16px;
+    }
+
+    .submit-button {
+        grid-column: span 2;
+        margin-top: 50px;
+        justify-self: center;
+    }
+
+    .validation-summary {
+        grid-column: span 2;
+        color: red;
+        margin-bottom: 20px;
+    }
+</style>
+
+<PageTitle>Patient Account</PageTitle>
+
+<div class="page-container">
+    <h1 class="title">Apply for Sick Leave Paper</h1>
+
+    <RadzenButton Click="@OpenForm"
+                  Text="Apply for Sick Leave"
+                  ButtonStyle="ButtonStyle.Primary"
+                  Size="ButtonSize.Large"
+                  class="apply-button" />
+
+    @if (isFormVisible)
+
+    {
+        <EditForm Model="newPatient" OnValidSubmit="AddDatabase" class="patient-form">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="validation-summary" />
+
+            <div class="form-group">
+                <label for="name">Name</label>
+                <InputText id="name" @bind-Value="newPatient.Name" class="form-control" Disabled />
+            </div>
+
+            <div class="form-group">
+                <label for="surname">Surname</label>
+                <InputText id="surname" @bind-Value="newPatient.Surname" class="form-control" Disabled />
+            </div>
+
+            <div class="form-group">
+                <label for="dob">Date of Birth</label>
+                <InputDate id="dob" @bind-Value="newPatient.DOB" class="form-control" Disabled />
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email</label>
+                <InputText id="email" @bind-Value="newPatient.Email" class="form-control" Disabled />
+            </div>
+
+            <div class="form-group">
+                <label for="position">Position</label>
+                <InputText id="position" @bind-Value="newPatient.Position" class="form-control" />
+            </div>
+
+            <div class="form-group">
+                <label for="illness">Illness</label>
+                <InputText id="illness" @bind-Value="newPatient.Illness" class="form-control" />
+            </div>
+
+            <div class="form-group">
+                <label for="description">Illness Description</label>
+                <InputTextArea id="description" @bind-Value="newPatient.IllnessDescription" class="form-control" rows="4" />
+            </div>
+
+            <RadzenButton Text="Submit" ButtonStyle="ButtonStyle.Success" Size="ButtonSize.Medium" Click="@AddDatabase" class="submit-button" />
+        </EditForm>
+    }
+</div>
+
+@code {
+    private bool isFormVisible = false;
+
+    private PatientAccount newPatient { get; set; } = new();
+
+
+
+    protected override async Task OnInitializedAsync()
+
+    {
+
+        // Fetch the authenticated user's details
+
+        var userEmail = "example@example.com"; // Replace with actual method to get logged-in user's email
+
+        var user = await AuthService.GetAuthenticatedUserAsync(userEmail);
+
+
+
+        if (user != null)
+
+        {
+
+            // Pre-fill the patient's details
+
+            newPatient.Name = user.Name;
+
+            newPatient.Surname = user.Surname;
+
+            newPatient.DOB = user.DOB;
+
+            newPatient.Email = user.Email;
+
+        }
+
+    }
+
+
+
+    private void OpenForm()
+
+    {
+
+        isFormVisible = true;
+
+    }
+
+
+
+    private async Task AddDatabase()
+
+    {
+
+        try
+
+        {
+
+            // Save the sick leave paper to the database
+
+            await AuthService.RegisterUserAsync(newPatient);
+
+            newPatient = new(); // Reset the form
+
+            isFormVisible = false;
+
+
+
+            await JsRuntime.InvokeVoidAsync("alert", "Successfully created a Sick Leave Paper!");
+
+        }
+
+        catch (Exception ex)
+
+        {
+
+            await JsRuntime.InvokeVoidAsync("alert", $"Error: {ex.Message}");
+
+        }
+
+    }
+}
