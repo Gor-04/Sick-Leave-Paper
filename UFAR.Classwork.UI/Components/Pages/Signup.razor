@@ -10,6 +10,11 @@
 @rendermode InteractiveServer
 
 <style>
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: linear-gradient(to right, #6a11cb, #2575fc);
+    }
     .signup-container {
         max-width: 400px;
         margin: 0 auto;
@@ -56,9 +61,10 @@
     }
 </style>
 
-<h3>Sign Up</h3>
+
 
 <div class="signup-container">
+    <h3>Sign Up</h3>
     <EditForm Model="@newPatientAccount" OnValidSubmit="@HandleValidSubmit">
         <DataAnnotationsValidator />
         <ValidationSummary />

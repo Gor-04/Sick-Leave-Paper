@@ -6,6 +6,26 @@
 @inject NavigationManager NavManager
 @inject IJSRuntime JsRuntime
 
+
+<style>
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: linear-gradient(to right, #6a11cb, #2575fc);
+    }
+    table{
+        background-color: #4788f5;
+    }
+    th:hover{
+        background-color: #2575fc;
+    }
+    tr,h1{
+        color:white
+    }
+    tr:hover {
+        background-color: #2575fc;
+    }
+</style>
 <h1>Patient List</h1>
 
 <table class="table">
@@ -19,6 +39,7 @@
             <th>Department</th>
             <th>Illness</th>
             <th>Illness Description</th>
+            <th>Status</th>
             <th>Actions</th>
         </tr>
     </thead>
