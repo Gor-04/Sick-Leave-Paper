@@ -25,7 +25,10 @@ namespace UFAR.Classwork.UI.Services
                 // Set default values for missing fields
                 patient.Departement ??= "Your Departement";
                 patient.Position ??= "Your Position";
+                patient.Illness ??= "Not Specified"; // Default value for Illness
+                patient.IllnessDescription ??= "Not Specified";
 
+                // Add the patient to the database
                 await _context.PatientAccounts.AddAsync(patient);
                 await _context.SaveChangesAsync();
                 return true;
@@ -36,6 +39,8 @@ namespace UFAR.Classwork.UI.Services
                 return false;
             }
         }
+
+
 
         public async Task<bool> LoginUserAsync(string email, string password)
         {
