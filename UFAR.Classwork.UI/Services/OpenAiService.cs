@@ -6,7 +6,7 @@ using UFAR.Classwork.UI.Components.Pages;
 public class OpenAiService
 {
     private readonly HttpClient _http;
-//    private readonly string _apiKey = "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";
+//    private readonly string _apiKey = "myKey";
 
     public OpenAiService(HttpClient http)
     {
@@ -20,7 +20,7 @@ public class OpenAiService
 
         try
         {
-            var url = "https://api.openai.com/v1/chat/completions";
+//            var url = "https://api.openai.com/v1/chat/completions";
             _http.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", _apiKey);
             var body = new
