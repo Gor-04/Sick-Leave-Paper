@@ -1,0 +1,342 @@
+﻿@page "/doctors"
+@rendermode InteractiveServer
+@using UFAR.Classwork.Data.Entities
+@using UFAR.Classwork.Data.DAO
+@using UFAR.Classwork.UI.Helpers
+@inject NavigationManager NavManager
+@inject IJSRuntime JsRuntime
+
+
+<style>
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: linear-gradient(to right, #6a11cb, #2575fc);
+    }
+    table{
+        background-color: #4788f5;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border-radius: 12px;
+        padding: 20px;
+    }
+    }
+    h1{
+        text-align:center;
+    }
+    th:hover{
+        background-color: #2575fc;
+    }
+    tr,h1{
+        color:white;
+    }
+    tr:hover {
+        background-color: #2575fc;
+    }
+
+    .approval-card {
+
+        max-width: 450px;
+        margin: 25px auto;
+        padding: 25px;
+        background: #ffffff;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        font-family: 'Segoe UI', sans-serif;
+    }
+
+        .approval-card h3 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 22px;
+            color: #333;
+        }
+
+        .approval-card label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #444;
+        }
+
+        .approval-card input[type="text"],
+        .approval-card input[type="number"] {
+            width: 100%;
+            padding: 10px 12px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 15px;
+            transition: 0.2s;
+        }
+
+        .approval-card input:focus {
+            border-color: #2e7df6;
+            box-shadow: 0 0 4px rgba(46, 125, 246, 0.3);
+            outline: none;
+        }
+
+    .approval-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+        .approval-buttons .btn {
+            flex: 1;
+            padding: 10px;
+            font-size: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+    .table-row:hover {
+        background: #eef4ff;
+        transform: scale(1.01);
+        transition: 0.2s;
+    }
+
+    .btn:hover {
+        transform: scale(1.05);
+    }
+
+    .card:hover {
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        transition: 0.3s;
+    }
+
+    .search {
+        width: 50%;
+        margin:0 auto;
+        display:block;
+        padding: 12px;
+        border-radius: 8px;
+        border: 2px solid #ddd;
+        margin-bottom: 20px;
+        font-size: 16px;
+    }
+
+</style>
+
+@if (isLoaded)
+{
+    <h1 style="color:white; margin-top:20px; text-align:center">
+        👨‍⚕️ Hello, Dr. @doctorName @doctorSurname
+    </h1>
+}
+<h1 style="text-align:center">Patient List</h1>
+
+<input class="search" placeholder="Search by illness"
+       @bind="searchTerm" @bind:event="oninput" />
+
+
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Surname</th>
+            <th>DOB</th>
+            <th>Position</th>
+            <th>Department</th>
+            <th>Illness</th>
+            <th>Illness Description</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var patient in AllPatients.Where(p => !hiddenPatients.Contains(p.ID)
+                && p.Illness.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)))
+        {
+            <tr>
+                <td>@patient.ID</td>
+                <td>@patient.Name</td>
+                <td>@patient.Surname</td>
+                <td>@patient.DOB.ToShortDateString()</td>
+                <td>@patient.Position</td>
+                <td>@patient.Departement</td>
+                <td>@patient.Illness</td>
+                <td>@patient.IllnessDescription</td>
+                <td>@patient.Status</td>
+                <td>
+                    @if (patient.Status == "Rejected")
+                    {
+                        <span style="color: red; font-weight: bold;">Rejected</span>
+                    }
+                    else if (pdfGeneratedStatus.TryGetValue(patient.ID, out bool isGenerated) && isGenerated)
+                    {
+                        <span style="color: green; font-weight: bold;">Paper is generated</span>
+                    }
+                    else
+                    {
+                        <button class="btn btn-success" @onclick="() => ApprovePatient(patient)">Approve</button>
+                        <button class="btn btn-danger" @onclick="() => RejectPatient(patient)">Reject</button>
+                        <button class="btn btn-info" @onclick="() => GeneratePdf(patient)">Generate PDF</button>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+
+</table>
+
+@if (selectedPatient != null)
+
+{
+    <div class="approval-card">
+        <h3>Approval Details for @selectedPatient.Name</h3>
+
+        <label for="illnessDescription">Illness Description</label>
+        <input type="text" id="illnessDescription" @bind="illnessDescription" />
+
+        <label for="daysToStay">Days to Stay at Home</label>
+        <input type="number" id="daysToStay" @bind="daysToStay" />
+
+        <div class="approval-buttons">
+            <button class="btn btn-primary" @onclick="SubmitApproval">Submit Approval</button>
+            <button class="btn btn-secondary" @onclick="CancelApproval">Cancel</button>
+        </div>
+    </div>
+
+}
+
+@code {
+
+    [Inject]
+
+    public ApplicationDBContext context { get; set; }
+    private HashSet<int> hiddenPatients = new();
+    private string searchTerm = "";
+    List<PatientAccount> AllPatients { get; set; } = new List<PatientAccount>();
+
+    PatientAccount selectedPatient { get; set; }
+
+    string illnessDescription { get; set; }
+
+    int daysToStay { get; set; }
+
+    private Dictionary<int, bool> pdfGeneratedStatus = new();
+
+    string doctorName = "";
+    string doctorSurname = "";
+    bool isLoaded = false;
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            doctorName = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "doctorName");
+            doctorSurname = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "doctorSurname");
+
+            isLoaded = true;
+            StateHasChanged();
+        }
+    }
+
+
+
+    protected override void OnInitialized()
+
+    {
+        LoadPatientList();
+
+    }
+
+
+
+    private void LoadPatientList()
+
+    {
+
+        AllPatients = context.PatientAccounts.ToList();
+
+    }
+
+
+
+    private void ApprovePatient(PatientAccount patient)
+
+    {
+
+        selectedPatient = patient;
+
+        illnessDescription = "";
+
+        daysToStay = 0;
+
+        selectedPatient.Status = "Approved";
+
+
+
+    }
+
+
+
+    private async void RejectPatient(PatientAccount patient)
+
+    {
+
+
+
+        patient.Status = "Rejected";
+
+        context.SaveChanges();
+
+        LoadPatientList();
+
+        await Task.Delay(5000);
+        hiddenPatients.Add(patient.ID);
+        StateHasChanged();
+
+    }
+
+
+
+    private void SubmitApproval()
+
+    {
+
+        selectedPatient.IllnessDescription = illnessDescription;
+
+        selectedPatient.DaysTime = daysToStay;
+
+        context.SaveChanges();
+
+        JsRuntime.InvokeVoidAsync("alert", "Patient approved successfully!");
+
+        selectedPatient = null;
+
+    }
+
+
+
+    private void CancelApproval()
+
+    {
+
+        selectedPatient = null;
+
+        illnessDescription = string.Empty;
+
+        daysToStay = 0;
+
+    }
+
+
+
+    private async void GeneratePdf(PatientAccount patient) {
+        SickLeaveFormGenerator generator = new SickLeaveFormGenerator();
+        generator.GenerateSickLeavePdf(patient); 
+        JsRuntime.InvokeVoidAsync("alert", "Sick Leave paper is generated successfully!"); 
+        pdfGeneratedStatus[patient.ID] = true;
+
+
+        await Task.Delay(5000);
+        hiddenPatients.Add(patient.ID);
+        StateHasChanged();
+   }
+
+}

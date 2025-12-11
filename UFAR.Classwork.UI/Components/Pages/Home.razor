@@ -1,0 +1,181 @@
+﻿@page "/"
+@inject NavigationManager NavManager
+@using UFAR.Classwork.UI.Services
+@using UFAR.Classwork.Data.Models
+@inject IJSRuntime JsRuntime
+@rendermode InteractiveServer
+@inject AuthenticationService AuthService
+
+
+<PageTitle>Sick Leave App - Login</PageTitle>
+
+<style>
+    /* Keep your existing styles intact */
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: linear-gradient(to right, #6a11cb, #2575fc);
+        overflow: hidden;
+    }
+
+    .mainLogin {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+
+    .login-container {
+        width: 100%;
+        max-width: 400px;
+        padding: 30px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    h3 {
+        text-align: center;
+        color: #333;
+        font-size: 24px;
+        margin-bottom: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 8px;
+        color: #555;
+        font-weight: bold;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 12px;
+        font-size: 14px;
+        border: 2px solid #ddd;
+        border-radius: 6px;
+        outline: none;
+        transition: all 0.3s;
+    }
+
+        .form-control:focus {
+            border-color: #6a11cb;
+            box-shadow: 0 0 5px rgba(106,17,203,0.5);
+        }
+
+    .btn-primary {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(to right, #6a11cb,#2575fc);
+        color: white;
+        font-size: 16px;
+        font-weight: bold;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+        .btn-primary:hover {
+            background: linear-gradient(to right, #2575fc,#6a11cb);
+            box-shadow: 0 4px 10px rgba(37,117,252,0.4);
+        }
+
+    .error-message {
+        color: #ff4d4f;
+        text-align: center;
+        margin-top: 10px;
+        font-weight: bold;
+    }
+
+    .signup-link {
+        text-align: center;
+        margin-top: 20px;
+        font-size: 14px;
+    }
+
+        .signup-link a {
+            color: #6a11cb;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+            .signup-link a:hover {
+                text-decoration: underline;
+            }
+</style>
+
+<div class="mainLogin">
+    <div class="login-container">
+        <h3>Login</h3>
+        <EditForm Model="@loginModel" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <InputText id="email" class="form-control" @bind-Value="loginModel.Email" />
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <InputText id="password" type="password" class="form-control" @bind-Value="loginModel.Password" />
+            </div>
+
+            <div class="form-group">
+                <button type="submit" class="btn-primary">Login</button>
+            </div>
+
+            @if (loginFailed)
+            {
+                <div class="error-message">Invalid email or password. Please try again.</div>
+            }
+
+            <div class="signup-link">
+                <p>Don't have an account? <a href="/signup">Sign up here</a></p>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private LoginModel loginModel = new();
+    private bool loginFailed = false;
+
+    private async Task HandleValidSubmit()
+    {
+        loginFailed = false;
+
+        bool isAuthenticated = await AuthService.LoginUserAsync(loginModel.Email, loginModel.Password);
+
+        if (isAuthenticated)
+        {
+            if (loginModel.Email.Contains("@doctor.com"))
+            {
+                var doctor = AuthService.GetDoctorByEmail(loginModel.Email);
+
+                if (doctor != null)
+                {
+                    // Store doctor info in localStorage
+                    await JsRuntime.InvokeVoidAsync("localStorage.setItem", "doctorName", doctor.Name);
+                    await JsRuntime.InvokeVoidAsync("localStorage.setItem", "doctorSurname", doctor.Surname);
+                }
+                NavManager.NavigateTo("/doctors");
+            }
+            else
+            {
+                await JsRuntime.InvokeVoidAsync("localStorage.setItem", "loggedInEmail", loginModel.Email);
+                NavManager.NavigateTo("/profile");
+            }
+        }
+        else
+        {
+            loginFailed = true;
+        }
+    }
+
+}

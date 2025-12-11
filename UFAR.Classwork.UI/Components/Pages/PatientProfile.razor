@@ -1,0 +1,341 @@
+﻿@page "/profile"
+@rendermode InteractiveServer
+@inject NavigationManager NavManager
+@using UFAR.Classwork.Data.DAO
+@using UFAR.Classwork.Data.Entities
+@using UFAR.Classwork.UI.Services
+
+@inject IJSRuntime JsRuntime
+
+
+@inject AuthenticationService AuthService
+
+<style>
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: linear-gradient(to right, #6a11cb, #2575fc);
+    }
+
+    .center-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        margin: 20px auto;
+        background-color: #f9f9f9;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-container {
+        max-width: 600px;
+        margin: 20px auto;
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    label {
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+
+    input, textarea {
+        padding: 8px;
+        font-size: 14px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+
+    button {
+        margin-top: 15px;
+        padding: 10px 20px;
+        font-size: 16px;
+        color: #fff;
+        background-color: #007bff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+    .button-group {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 10px;
+    }
+
+    .title {
+        font-size: 32px;
+        color: #333;
+    }
+
+    .timeline {
+        display: flex;
+        align-items: center;
+        margin: 20px 0;
+    }
+
+    .step {
+        text-align: center;
+        width: 100px;
+        opacity: 0.3;
+        transition: 0.4s;
+    }
+
+        .step.active {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        .step span {
+            display: inline-block;
+            width: 35px;
+            height: 35px;
+            background: #6a11cb;
+            color: white;
+            border-radius: 50%;
+            line-height: 35px;
+            font-weight: bold;
+        }
+
+    .line {
+        flex-grow: 1;
+        height: 4px;
+        background: #ddd;
+        transition: 0.4s;
+    }
+
+        .line.active {
+            background: #6a11cb;
+        }
+</style>
+
+<PageTitle>Patient Profile</PageTitle>
+
+@if (patient == null && !isLoading)
+{
+    <p>Loading your profile...</p>
+}
+else if (patient == null && isLoading)
+{
+    <p>Redirecting to login...</p>
+}
+else
+{
+    <!-- Centered Patient Profile Section -->
+    <div class="center-container">
+        <h3 class="title">Patient Profile</h3>
+        <p><strong>Name:</strong> @patient.Name</p>
+        <p><strong>Surname:</strong> @patient.Surname</p>
+        <p><strong>Email:</strong> @patient.Email</p>
+        <p><strong>Status:</strong> @patient.Status</p>
+        <div class="timeline">
+            <div class="step @(patient.Status == "Pending" || patient.Status == "Approved" ? "active" : "")">
+                <span>1</span>
+                <p>Submitted</p>
+            </div>
+
+            <div class="line @(patient.Status == "Pending" || patient.Status == "Approved" ? "active" : "")"></div>
+
+            <div class="step @(patient.Status == "Pending" || patient.Status == "Approved" ? "active" : "")">
+                <span>2</span>
+                <p>Doctor Reviewing</p>
+            </div>
+
+            <div class="line @(patient.Status == "Approved" ? "active" : "")"></div>
+
+            <div class="step @(patient.Status == "Approved" ? "active" : "")">
+                <span>3</span>
+                <p>Approved</p>
+            </div>
+        </div>
+
+
+        @if (patient.Status == "Approved")
+        {
+            <p>
+                <a href="@PdfPath" target="_blank">📄 View Your Sick Leave Form</a>
+            </p>
+            <button class="btn btn-info" @onclick="ExplainIllness">Explain My Illness</button>
+
+            @if (!string.IsNullOrEmpty(aiExplanation))
+            {
+                <div class="alert alert-secondary mt-3">
+                    <strong>AI Explanation:</strong>
+                    <p>@aiExplanation</p>
+                </div>
+            }
+        }
+
+        <RadzenButton Click="@OpenForm"
+                      Text="Apply for Sick Leave"
+                      ButtonStyle="ButtonStyle.Primary"
+                      Size="ButtonSize.Large"
+                      class="apply-button" />
+    </div>
+
+    <!-- Form Section -->
+    @if (isFormVisible)
+    {
+        <div class="form-container">
+            <EditForm Model="patient" OnValidSubmit="UpdatePatientAccount">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="form-group">
+                    <label>Name:</label>
+                    <InputText class="form-control" @bind-Value="patient.Name" Disabled />
+                </div>
+
+                <div class="form-group">
+                    <label>Surname:</label>
+                    <InputText class="form-control" @bind-Value="patient.Surname" Disabled />
+                </div>
+
+                <div class="form-group">
+                    <label>Date of Birth:</label>
+                    <InputDate class="form-control" @bind-Value="patient.DOB" Disabled />
+                </div>
+
+                <div class="form-group">
+                    <label>Email:</label>
+                    <InputText class="form-control" @bind-Value="patient.Email" Disabled />
+                </div>
+
+                <div class="form-group">
+                    <label>Position:</label>
+                    <InputText class="form-control" @bind-Value="patient.Position" />
+                </div>
+
+                <div class="form-group">
+                    <label>Department:</label>
+                    <InputText class="form-control" @bind-Value="patient.Departement" placeholder="Enter your department" />
+                </div>
+
+                <div class="form-group">
+                    <label>Illness:</label>
+                    <InputText class="form-control" @bind-Value="patient.Illness" />
+                </div>
+
+                <div class="form-group">
+                    <label>Illness Description:</label>
+                    <InputTextArea class="form-control" @bind-Value="patient.IllnessDescription" rows="4" />
+                </div>
+
+                <div class="button-group">
+                    <button type="submit">Submit Application</button>
+                    <button type="button" @onclick="CloseForm" style="background-color: #dc3545;">
+                        Close
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    }
+}
+
+@inject OpenAiService OpenAiService
+@inject ApplicationDBContext context
+@code {
+    private PatientAccount? patient;
+    private bool isLoading = false;
+    private bool isFormVisible = false;
+    private string PdfPath => $"/Sick_Leave_Request_{patient?.ID}.pdf";
+
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Retrieve the email from localStorage after the initial render
+            var loggedInEmail = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "loggedInEmail");
+
+            if (string.IsNullOrEmpty(loggedInEmail))
+            {
+                isLoading = true;
+                NavManager.NavigateTo("/");
+                return;
+            }
+
+            // Fetch the authenticated user details
+            patient = await AuthService.GetAuthenticatedUserAsync(loggedInEmail);
+
+            if (patient == null)
+            {
+                isLoading = true;
+                NavManager.NavigateTo("/");
+            }
+
+            StateHasChanged(); // Notify the UI about the changes
+        }
+    }
+
+    private void OpenForm()
+
+    {
+
+        isFormVisible = true;
+
+    }
+    private void CloseForm()
+    {
+        isFormVisible = false;
+    }
+    private async Task UpdatePatientAccount()
+    {
+        try
+        {
+            var success = await AuthService.UpdatePatientAccountAsync(patient);
+
+            if (success)
+            {
+                await JsRuntime.InvokeVoidAsync("alert", "Your application has been submitted successfully. Please wait for approval.");
+                patient.Status = "Pending";
+
+                isFormVisible = false;
+                StateHasChanged();
+            }
+            else
+            {
+                await JsRuntime.InvokeVoidAsync("alert", "Oops! Something went wrong while submitting your application. Please try again.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("alert", $"Error: {ex.Message}");
+        }
+    }
+
+    private string aiExplanation = "";
+
+    private async Task ExplainIllness()
+    {
+        if (patient == null || string.IsNullOrEmpty(patient.IllnessDescription))
+        {
+            aiExplanation = "No illness description available.";
+            return;
+        }
+
+        aiExplanation = "⏳ Asking AI...";
+
+        // Call OpenAI service
+        aiExplanation = await OpenAiService.ExplainIllnessAsync(patient.IllnessDescription);
+    }
+
+
+
+}

@@ -1,0 +1,78 @@
+﻿@page "/illness-trends"
+@rendermode InteractiveServer
+@using UFAR.Classwork.Data.Entities
+@using UFAR.Classwork.Data.DAO
+@using UFAR.Classwork.UI.Helpers
+@inject NavigationManager NavManager
+@inject IJSRuntime JsRuntime
+
+<PageTitle>Illness Trends Analysis</PageTitle>
+
+<h2 style="text-align:center; margin-bottom:20px;">📊 Illness Trends by Date</h2>
+
+<div style="text-align:center; margin-bottom:20px;">
+    <label>Select Illness: </label>
+    <select @bind="selectedIllness">
+        <option value="">--All Illnesses--</option>
+        @foreach (var illness in illnesses)
+        {
+            <option value="@illness">@illness</option>
+        }
+    </select>
+</div>
+
+<canvas id="illnessChart" width="800" height="400"></canvas>
+
+<div style="text-align:center; margin-top:20px;">
+    <button class="btn btn-primary" @onclick="DrawChart">Generate Chart</button>
+</div>
+
+@code {
+    [Inject]
+
+    public ApplicationDBContext context { get; set; }
+    private List<string> illnesses = new();
+    private string selectedIllness = "";
+
+    protected override void OnInitialized()
+    {
+        illnesses = context.PatientAccounts
+            .Where(p => !string.IsNullOrEmpty(p.Illness))
+            .Select(p => p.Illness)
+            .Distinct()
+            .ToList();
+    }
+
+    private async Task DrawChart()
+    {
+        try
+        {
+            var filteredPatients = context.PatientAccounts.AsQueryable();
+
+            if (!string.IsNullOrEmpty(selectedIllness))
+            {
+                filteredPatients = filteredPatients.Where(p => p.Illness == selectedIllness);
+            }
+
+            var data = filteredPatients
+                .Where(p => p.DOB != null)
+                .GroupBy(p => new { Year = p.DOB.Year, Month = p.DOB.Month })
+                .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.Month)
+                .Select(g => new
+                {
+                    Label = $"{g.Key.Month}/{g.Key.Year}",
+                    Count = g.Count()
+                })
+                .ToList();
+
+            var labels = data.Select(d => d.Label).ToArray();
+            var counts = data.Select(d => d.Count).ToArray();
+
+            await JsRuntime.InvokeVoidAsync("drawIllnessChart", labels, counts);
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("alert", $"Error drawing chart: {ex.Message}");
+        }
+    }
+}

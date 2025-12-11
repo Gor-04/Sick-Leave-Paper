@@ -1,0 +1,52 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sick Leave App</title>
+    <base href="~/" />
+    <link rel="stylesheet" href="css/site.css" />
+    <link rel="stylesheet" href="SickLeaveApp.styles.css" />
+</head>
+<body>
+    <app>
+        <component type="typeof(App)" render-mode="ServerPrerendered" />
+    </app>
+
+    <script src="_framework/blazor.server.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        window.drawIllnessChart = (labels, counts) => {
+            const ctx = document.getElementById('illnessChart').getContext('2d');
+
+            if (window.illnessChartInstance) {
+                window.illnessChartInstance.destroy(); // remove previous chart
+            }
+
+            window.illnessChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Number of Patients',
+                        data: counts,
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        };
+    </script>
+</body>
+</html>
