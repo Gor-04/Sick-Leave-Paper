@@ -1,14 +1,24 @@
-# Build stage
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-WORKDIR /app
-COPY . .
-RUN dotnet restore
-RUN dotnet publish -c Release -o out
+# Stage 1: Build
+FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
+WORKDIR /src
 
-# Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+# Copy all project files
+COPY . .
+
+# Restore dependencies for the UI project (adjust path if needed)
+RUN dotnet restore "UFAR.Classwork.UI/UFAR.Classwork.UI.csproj"
+
+# Publish the UI project
+WORKDIR "/src/UFAR.Classwork.UI"
+RUN dotnet publish "UFAR.Classwork.UI.csproj" -c Release -o /app/publish
+
+# Stage 2: Runtime
+FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS runtime
 WORKDIR /app
-COPY --from=build /app/out .
-ENV ASPNETCORE_URLS=http://+:10000
-EXPOSE 10000
+COPY --from=build /app/publish .
+
+# Expose HTTP port
+EXPOSE 80
+
+# Entry point
 ENTRYPOINT ["dotnet", "UFAR.Classwork.UI.dll"]
